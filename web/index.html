@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multi-Agent Research Copilot</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #11151f; --panel2: #161b28; --border: #232a3b;
+    --fg: #e6e9f0; --muted: #8b93a7; --accent: #6c8cff; --accent2: #38bdf8;
+    --green: #34d399; --amber: #fbbf24; --red: #f87171; --purple: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; min-height: 100vh; }
+  header { padding: 28px 32px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  header .logo { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--accent), var(--purple)); display: flex; align-items: center; justify-content: center; font-size: 20px; }
+  header h1 { font-size: 20px; font-weight: 650; }
+  header .sub { color: var(--muted); font-size: 13px; width: 100%; margin-left: 52px; margin-top: -6px; }
+  .badge { font-size: 11px; padding: 3px 9px; border-radius: 20px; border: 1px solid var(--border); color: var(--muted); background: var(--panel); }
+  main { max-width: 1280px; margin: 0 auto; padding: 24px 32px 60px; }
+
+  .input-row { display: flex; gap: 10px; margin-bottom: 22px; }
+  .input-row input { flex: 1; background: var(--panel); border: 1px solid var(--border); color: var(--fg); padding: 13px 16px; border-radius: 10px; font-size: 15px; outline: none; }
+  .input-row input:focus { border-color: var(--accent); }
+  .input-row button { background: linear-gradient(135deg, var(--accent), var(--purple)); border: none; color: #fff; padding: 13px 26px; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .input-row button:disabled { opacity: .5; cursor: not-allowed; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 26px; }
+  .chip { font-size: 12.5px; color: var(--muted); background: var(--panel); border: 1px solid var(--border); padding: 6px 12px; border-radius: 20px; cursor: pointer; }
+  .chip:hover { color: var(--fg); border-color: var(--accent); }
+
+  .grid { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+
+  /* timeline */
+  #timeline { padding: 14px 18px; max-height: 560px; overflow-y: auto; }
+  .evt { display: flex; gap: 10px; padding: 7px 0; font-size: 13px; border-bottom: 1px dashed #1c2333; }
+  .evt:last-child { border-bottom: none; }
+  .evt .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .evt .who { font-weight: 600; min-width: 82px; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .evt .txt { color: var(--muted); line-height: 1.45; }
+  .agent-planner { color: var(--accent2); } .dot-planner, .bg-planner { background: var(--accent2); }
+  .agent-searcher { color: var(--green); } .dot-searcher, .bg-searcher { background: var(--green); }
+  .agent-writer { color: var(--purple); } .dot-writer, .bg-writer { background: var(--purple); }
+  .agent-critic { color: var(--amber); } .dot-critic, .bg-critic { background: var(--amber); }
+  .agent-evaluator { color: var(--accent); } .dot-evaluator, .bg-evaluator { background: var(--accent); }
+  .agent-orchestrator { color: var(--muted); } .dot-orchestrator, .bg-orchestrator { background: var(--muted); }
+  .evt.error .txt { color: var(--red); }
+
+  /* pipeline stages */
+  .stages { display: flex; gap: 6px; padding: 14px 18px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .stage { font-size: 11.5px; padding: 5px 11px; border-radius: 8px; border: 1px solid var(--border); color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .stage .sdot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); }
+  .stage.active { border-color: var(--accent); color: var(--fg); } .stage.active .sdot { background: var(--accent); animation: pulse 1s infinite; }
+  .stage.done { color: var(--green); border-color: #1d3a30; } .stage.done .sdot { background: var(--green); }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  /* report */
+  #report-pane { min-height: 400px; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .tab { padding: 12px 20px; font-size: 13.5px; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--fg); border-bottom-color: var(--accent); }
+  .tab-body { padding: 22px 26px; display: none; max-height: 720px; overflow-y: auto; }
+  .tab-body.active { display: block; }
+  .md { line-height: 1.7; font-size: 14.5px; }
+  .md h1 { font-size: 22px; margin: 18px 0 10px; } .md h1:first-child { margin-top: 0; }
+  .md h2 { font-size: 18px; margin: 22px 0 8px; color: var(--accent2); }
+  .md h3 { font-size: 15.5px; margin: 16px 0 6px; }
+  .md p { margin: 8px 0; color: #c9cfdd; }
+  .md a { color: var(--accent); text-decoration: none; } .md a:hover { text-decoration: underline; }
+  .md ul, .md ol { margin: 8px 0 8px 22px; color: #c9cfdd; }
+  .md table { border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  .md th, .md td { border: 1px solid var(--border); padding: 7px 12px; }
+  .md th { background: var(--panel2); }
+  .md blockquote { border-left: 3px solid var(--accent); padding-left: 14px; color: var(--muted); margin: 10px 0; }
+  .md code { background: var(--panel2); padding: 2px 6px; border-radius: 5px; font-size: 13px; }
+
+  /* evaluation */
+  .score-hero { display: flex; align-items: center; gap: 22px; margin-bottom: 20px; }
+  .score-ring { position: relative; width: 110px; height: 110px; }
+  .score-ring svg { transform: rotate(-90deg); }
+  .score-ring .num { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .score-ring .num b { font-size: 26px; } .score-ring .num span { font-size: 11px; color: var(--muted); }
+  .grade-pill { font-size: 30px; font-weight: 700; padding: 8px 22px; border-radius: 14px; }
+  .grade-A { background: #0d3326; color: var(--green); } .grade-B { background: #10314f; color: var(--accent2); }
+  .grade-C { background: #3a2f10; color: var(--amber); } .grade-D { background: #3a2210; color: #fb923c; }
+  .grade-F { background: #3a1414; color: var(--red); }
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin: 14px 0; }
+  .metric { background: var(--panel2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+  .metric .k { font-size: 11px; color: var(--muted); text-transform: capitalize; }
+  .metric .v { font-size: 19px; font-weight: 650; margin-top: 3px; }
+  .bar { height: 5px; background: var(--border); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); }
+  .judge-notes { margin-top: 16px; }
+  .judge-notes li { font-size: 13.5px; color: #c9cfdd; margin: 6px 0 6px 18px; line-height: 1.5; }
+  .src-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px dashed #1c2333; font-size: 13px; }
+  .src-row .sid { color: var(--accent); font-weight: 700; min-width: 30px; }
+  .src-row a { color: var(--fg); text-decoration: none; } .src-row a:hover { color: var(--accent); }
+  .src-row .snip { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  .empty { color: var(--muted); text-align: center; padding: 60px 20px; font-size: 14px; }
+
+  /* history */
+  #history { margin-top: 26px; }
+  .hist-row { display: flex; align-items: center; gap: 12px; padding: 11px 18px; border-bottom: 1px solid #1c2333; cursor: pointer; font-size: 13.5px; }
+  .hist-row:hover { background: var(--panel2); }
+  .hist-row .topic { flex: 1; }
+  .status-pill { font-size: 11px; padding: 3px 10px; border-radius: 12px; text-transform: uppercase; font-weight: 600; }
+  .st-done { background: #0d3326; color: var(--green); } .st-running { background: #10314f; color: var(--accent2); }
+  .st-failed { background: #3a1414; color: var(--red); } .st-queued { background: var(--panel2); color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🔬</div>
+  <h1>Multi-Agent Research Copilot</h1>
+  <span class="badge" id="model-badge">…</span>
+  <div class="sub">planner → searcher → writer → critic → evaluator &nbsp;·&nbsp; cited survey reports with quality scoring</div>
+</header>
+<main>
+  <div class="input-row">
+    <input id="topic" placeholder="Enter a research topic… e.g. 'Impact of graph neural networks on drug discovery'" />
+    <button id="go" onclick="startJob()">Research</button>
+  </div>
+  <div class="chips" id="chips"></div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Agent Pipeline <span id="elapsed" style="font-size:11px"></span></h2>
+        <div class="stages" id="stages"></div>
+        <div id="timeline"><div class="empty">Submit a topic to watch the agent team work.</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="card" id="report-pane">
+        <div class="tabs">
+          <div class="tab active" data-tab="report" onclick="switchTab('report')">📄 Report</div>
+          <div class="tab" data-tab="eval" onclick="switchTab('eval')">📊 Evaluation</div>
+          <div class="tab" data-tab="sources" onclick="switchTab('sources')">🔗 Sources</div>
+        </div>
+        <div class="tab-body active" id="tab-report"><div class="empty">The survey report will appear here.</div></div>
+        <div class="tab-body" id="tab-eval"><div class="empty">Quality evaluation appears after the report is finalized.</div></div>
+        <div class="tab-body" id="tab-sources"><div class="empty">Gathered sources will be listed here.</div></div>
+      </div>
+      <div class="card" id="history" style="display:none">
+        <h2>Recent Jobs</h2>
+        <div id="hist-rows"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = '';
+const AGENTS = ['planner','searcher','writer','critic','evaluator'];
+const EXAMPLES = [
+  'Impact of graph neural networks on drug discovery',
+  'How effective are retrieval-augmented generation systems for legal research?',
+  'State of solid-state battery technology for electric vehicles',
+  'Microplastics in drinking water: detection methods and health risks'
+];
+let currentJob = null, pollTimer = null, cursor = 0, t0 = 0;
+
+const $ = s => document.querySelector(s);
+const chipsEl = $('#chips');
+EXAMPLES.forEach(t => {
+  const c = document.createElement('div'); c.className = 'chip'; c.textContent = t;
+  c.onclick = () => { $('#topic').value = t; };
+  chipsEl.appendChild(c);
+});
+
+fetch(API + '/api/health').then(r => r.json()).then(h => {
+  $('#model-badge').textContent = (h.model || 'no LLM') + (h.llm_configured ? '' : ' ⚠ no key');
+}).catch(() => { $('#model-badge').textContent = 'API offline'; });
+
+function renderStages(activeAgent, doneAgents) {
+  $('#stages').innerHTML = AGENTS.map(a => {
+    let cls = '';
+    if (doneAgents.has(a)) cls = 'done';
+    else if (a === activeAgent) cls = 'active';
+    return `<div class="stage ${cls}"><span class="sdot"></span>${a}</div>`;
+  }).join('');
+}
+renderStages(null, new Set());
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-body').forEach(b => b.classList.toggle('active', b.id === 'tab-' + name));
+}
+
+async function startJob() {
+  const topic = $('#topic').value.trim();
+  if (topic.length < 3) return;
+  $('#go').disabled = true;
+  try {
+    const r = await fetch(API + '/api/jobs', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({topic})
+    });
+    if (!r.ok) { const e = await r.json(); alert(e.detail || 'Failed to start job'); return; }
+    const j = await r.json();
+    currentJob = j.id; cursor = 0; t0 = Date.now();
+    $('#timeline').innerHTML = '';
+    $('#tab-report').innerHTML = '<div class="empty">Agents are working…</div>';
+    $('#tab-eval').innerHTML = '<div class="empty">Waiting for final report…</div>';
+    $('#tab-sources').innerHTML = '<div class="empty">Searching…</div>';
+    switchTab('report');
+    pollTimer = setInterval(poll, 1500);
+    poll();
+  } finally { $('#go').disabled = false; }
+}
+
+async function poll() {
+  if (!currentJob) return;
+  try {
+    const [ev, job] = await Promise.all([
+      fetch(`${API}/api/jobs/${currentJob}/events?after=${cursor}`).then(r => r.json()),
+      fetch(`${API}/api/jobs/${currentJob}`).then(r => r.json())
+    ]);
+    if (ev.events && ev.events.length) {
+      if (cursor === 0) $('#timeline').innerHTML = '';
+      ev.events.forEach(appendEvent);
+      cursor = ev.next_cursor;
+    }
+    // stages
+    const done = new Set(), active = {start: 1};
+    ev.all?.forEach?.(() => {});
+    const seen = job.events || [];
+    seen.forEach(e => { if (e.kind === 'done') done.add(e.agent); });
+    const lastStart = [...seen].reverse().find(e => e.kind === 'start' && !done.has(e.agent));
+    renderStages(lastStart ? lastStart.agent : null, done);
+    $('#elapsed').textContent = job.timings?.total_s ? `${job.timings.total_s}s total` :
+      (job.status === 'running' ? `${((Date.now() - t0)/1000)|0}s` : '');
+
+    if (job.status === 'done') {
+      clearInterval(pollTimer);
+      loadResults(currentJob);
+      loadHistory();
+    } else if (job.status === 'failed') {
+      clearInterval(pollTimer);
+      $('#tab-report').innerHTML = `<div class="empty" style="color:var(--red)">Pipeline failed: ${job.error || 'unknown error'}</div>`;
+    }
+  } catch (e) { /* transient */ }
+}
+
+function appendEvent(e) {
+  const tl = $('#timeline');
+  const div = document.createElement('div');
+  div.className = 'evt' + (e.kind === 'error' ? ' error' : '');
+  div.innerHTML = `<span class="dot dot-${e.agent}"></span>
+    <span class="who agent-${e.agent}">${e.agent}</span>
+    <span class="txt">${escapeHtml(e.text || e.kind)}</span>`;
+  tl.appendChild(div);
+  tl.scrollTop = tl.scrollHeight;
+}
+
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function loadResults(id) {
+  const [rep, ev] = await Promise.all([
+    fetch(`${API}/api/jobs/${id}/report`).then(r => r.json()),
+    fetch(`${API}/api/jobs/${id}/evaluation`).then(r => r.json())
+  ]);
+  $('#tab-report').innerHTML = `<div class="md">${marked.parse(rep.markdown)}</div>`;
+  renderSources(rep.sources);
+  renderEval(ev);
+  switchTab('report');
+}
+
+function renderSources(sources) {
+  $('#tab-sources').innerHTML = sources.map(s => `
+    <div class="src-row">
+      <span class="sid">[${s.id}]</span>
+      <div>
+        <a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.title || s.url)}</a>
+        ${s.fetched ? '<span class="badge" style="margin-left:6px">full text</span>' : ''}
+        <div class="snip">${escapeHtml((s.snippet || s.fetch_error || '').slice(0, 180))}</div>
+      </div>
+    </div>`).join('') || '<div class="empty">No sources.</div>';
+}
+
+function renderEval(ev) {
+  const h = ev.heuristic || {}, j = ev.judge || {};
+  const score = ev.composite_score, grade = ev.grade;
+  const pct = Math.max(0, Math.min(100, score));
+  const circ = 2 * Math.PI * 46;
+  let html = `<div class="score-hero">
+    <div class="score-ring">
+      <svg width="110" height="110">
+        <circle cx="55" cy="55" r="46" fill="none" stroke="var(--border)" stroke-width="9"/>
+        <circle cx="55" cy="55" r="46" fill="none" stroke="url(#g1)" stroke-width="9"
+          stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - pct/100)}" stroke-linecap="round"/>
+        <defs><linearGradient id="g1"><stop offset="0%" stop-color="var(--accent)"/><stop offset="100%" stop-color="var(--accent2)"/></linearGradient></defs>
+      </svg>
+      <div class="num"><b>${score}</b><span>/100</span></div>
+    </div>
+    <div>
+      <div class="grade-pill grade-${grade}">${grade}</div>
+      <div style="color:var(--muted);font-size:12.5px;margin-top:8px">composite quality score<br>heuristics ${100 - 50}% · LLM judge ${50}%</div>
+    </div>
+  </div>`;
+  html += '<h3 style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:18px 0 4px">Heuristic metrics</h3><div class="metric-grid">';
+  for (const [k, v] of Object.entries(h.scores || {})) {
+    html += `<div class="metric"><div class="k">${k.replace(/_/g,' ')}</div><div class="v">${v}</div><div class="bar"><i style="width:${v}%"></i></div></div>`;
+  }
+  html += '</div>';
+  const st = h.stats || {};
+  html += `<div style="font-size:12.5px;color:var(--muted);margin-top:6px">
+    ${st.words} words · ${st.headings} headings · ${st.inline_citations} inline citations ·
+    ${st.unique_sources_cited}/${st.sources_gathered} sources cited · density ${st.cite_density_per_100_words}/100 words
+    ${st.invalid_citation_ids?.length ? ` · <span style="color:var(--red)">invalid ids: ${st.invalid_citation_ids}</span>` : ''}
+  </div>`;
+  if (j.dimensions) {
+    html += '<h3 style="font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:20px 0 4px">LLM judge rubric</h3><div class="metric-grid">';
+    for (const [k, v] of Object.entries(j.dimensions)) {
+      html += `<div class="metric"><div class="k">${k.replace(/_/g,' ')}</div><div class="v">${v}<span style="font-size:12px;color:var(--muted)">/10</span></div><div class="bar"><i style="width:${v*10}%"></i></div></div>`;
+    }
+    html += '</div>';
+    if (j.summary) html += `<p style="font-size:13.5px;color:#c9cfdd;margin-top:10px;line-height:1.5"><b>Judge:</b> ${escapeHtml(j.summary)}</p>`;
+    if (j.top_improvements?.length) {
+      html += '<ul class="judge-notes">' + j.top_improvements.map(i => `<li>${escapeHtml(i)}</li>`).join('') + '</ul>';
+    }
+  }
+  if (ev.notes?.length) {
+    html += '<ul class="judge-notes">' + ev.notes.map(n => `<li>${escapeHtml(n)}</li>`).join('') + '</ul>';
+  }
+  $('#tab-eval').innerHTML = html;
+}
+
+async function loadHistory() {
+  try {
+    const rows = await fetch(API + '/api/jobs?limit=8').then(r => r.json());
+    if (!rows.length) return;
+    $('#history').style.display = 'block';
+    $('#hist-rows').innerHTML = rows.map(j => `
+      <div class="hist-row" onclick="openJob('${j.id}')">
+        <span class="status-pill st-${j.status}">${j.status}</span>
+        <span class="topic">${escapeHtml(j.topic)}</span>
+        ${j.score != null ? `<span class="badge">${j.score}/100 · ${j.grade}</span>` : ''}
+        <span style="color:var(--muted);font-size:12px">${new Date(j.created_at*1000).toLocaleString()}</span>
+      </div>`).join('');
+  } catch (e) {}
+}
+
+async function openJob(id) {
+  currentJob = id;
+  const job = await fetch(`${API}/api/jobs/${id}`).then(r => r.json());
+  cursor = 0; $('#timeline').innerHTML = '';
+  (job.events || []).forEach(appendEvent);
+  const done = new Set(); (job.events || []).forEach(e => { if (e.kind === 'done') done.add(e.agent); });
+  renderStages(null, done);
+  if (job.status === 'done') loadResults(id);
+  else if (job.status === 'running' || job.status === 'queued') { t0 = Date.now(); pollTimer = setInterval(poll, 1500); }
+  else if (job.status === 'failed') $('#tab-report').innerHTML = `<div class="empty" style="color:var(--red)">Failed: ${escapeHtml(job.error||'')}</div>`;
+}
+
+$('#topic').addEventListener('keydown', e => { if (e.key === 'Enter') startJob(); });
+loadHistory();
+</script>
+</body>
+</html>
