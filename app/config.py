@@ -40,7 +40,7 @@ class Settings:
         default_factory=lambda: _env("LLM_MODEL", "qwen/qwen3.8-max-free")
     )
     llm_timeout_s: float = field(default_factory=lambda: _env_float("LLM_TIMEOUT_S", 300.0))
-    llm_max_retries: int = field(default_factory=lambda: _env_int("LLM_MAX_RETRIES", 3))
+    llm_max_retries: int = field(default_factory=lambda: _env_int("LLM_MAX_RETRIES", 5))
     # Reasoning models (e.g. qwen3.8-max) spend tokens on reasoning before
     # emitting content; keep the ceiling generous so content is never cut off.
     llm_max_tokens: int = field(default_factory=lambda: _env_int("LLM_MAX_TOKENS", 8000))
