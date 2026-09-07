@@ -1,3 +1,5 @@
+**Live demo:** https://research-copilot-2bj2.onrender.com — planner → searcher → writer → critic pipeline, running live.
+
 # 🔬 Multi-Agent Research Copilot
 
 A production-ready **multi-agent system** that takes a research topic and produces a
